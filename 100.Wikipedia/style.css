@@ -1,0 +1,132 @@
+*{
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+body{
+    margin: 0;
+    padding: 0;
+    background: whitesmoke;
+}
+.container{
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem 10rem;
+   height: 100vh;
+}
+h1{
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    text-align: inline;
+    display: inline;
+}
+#search-form{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+#search-input{
+    font-size: 1.2rem;
+    padding: 0.5rem 1rem;
+    margin-right: 1rem;
+    border: 2px solid black;
+    border-radius: 8px;
+    flex-grow: 1;
+}
+#search-input:focus{
+    outline: none;
+    border-color: #0074d9;
+}
+#search-input:hover{
+    background-color: cornsilk;
+    color: black;
+}
+button{
+    margin: 5px;
+    font-size: 1.2rem;
+    border: 2px solid black;
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+    border-radius: 0.4rem;
+}
+button:focus{
+    outline: none;
+    border-color: #0074d9;
+}
+button:hover{
+    background-color: cornsilk;
+    color: black;
+}
+#search-results{
+    margin-bottom: 1rem;
+}
+.result-item{
+    margin-bottom: 1rem;
+}
+.result-title{
+    font-size: 1rem;
+    margin-top: 0;
+}
+.result-link{
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: white;
+    background: white;
+}
+.result-link:hover{
+    text-decoration: underline;
+}
+.result-snippet{
+    margin-top: 0;
+}
+.spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    height: 10rem;
+}
+/* Dark Theme */
+
+.header-container{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px;
+}
+#theme-toggler{
+    border: none;
+    color: black;
+    background-color: transparent;
+    cursor: pointer;
+    background: #e2e2e2;
+    padding: 10px;
+    margin-left: 10rem;
+    border-radius: 100px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+.dark-theme {
+    background-color: #282c34;
+    color: #fff;
+}
+.dark-theme #search-input{
+    background-color: #454545;
+    color: white;
+    border-color: white;
+}
+dark-theme #search-input:focus{
+    border-color: #0074d9;
+}
+.dark-theme button[type="submit"] {
+    background-color: #0074d9;
+}  
+.dark-theme .result-link,
+.dark-theme .result-link:hover {
+  color: #90caf9;
+}
