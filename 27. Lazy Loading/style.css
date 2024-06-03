@@ -1,5 +1,6 @@
-* {
-  box-sizing: border-box;
+
+  * {
+     box-sizing: border-box;
 }
 
 body {
@@ -28,4 +29,5 @@ body {
 .loading-text {
   font-size: 50px;
   color: red;
-}
+} 
+   
