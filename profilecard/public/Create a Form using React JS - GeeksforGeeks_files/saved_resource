@@ -1,0 +1,43 @@
+
+var ftGUID_8223183="6002A640073CA4";
+var ftConfID_8223183="0";
+var ftParams_8223183="ftOBA=1&ft_domain=www.geeksforgeeks.org&ft_ifb=1&ft_agentEnv=0&ft_referrer=https%3A%2F%2Fwww.geeksforgeeks.org%2F&gdpr=0&ftClick=https://exch.quantserve.com/r?&a=p-1RYxePXT9bCS2&labels=_qc.clk,_click.adserver.rtb,_click.rand.1675070624&rtbip=103.229.8.9&rtbdata2=EAM6HWh0dHBzOi8vd3d3LmdlZWtzZm9yZ2Vla3Mub3JnWihJVEFYekNjM1FKMDZaQkxPTGpJTXkzSm5FTTQ2WXhiR2RETUl6YldogAG5mIVBugEkRjkwMzdEQjgtMzAyNS00NTc4LUJFRjktOTZDNjFGMEVERDA5wAGwrhXIAZ3g26-AMtoBJUFCOUQ0OENELTNENEItNEZERC05NjBELTNGQkMyNTBGODIwMEKwAgjIAgDQAs7hhvv4n_fMqQHoAiTyAg4ItfIVEK7oxMnrgqa6MvICDQgkEPqQ3dHdmL3ErAH4AgCKAwYxNjIxMzOYAwCoAwCyAxAkAfsA__8AAAAAAAAAAAAAugMSCdBAPSf9SG6DEd-apkk0xyGrwgMSCV1ELXgh-VhpEbsXBZvdteOYyAOBgICGAdgDoJnengbiAw9wLTFSWXhlUFhUOWJDUzLqAwYIrAIQ-gHyAwY1MjAwMDH4AwCABL-PAYoEAjc3kgQMUE0tWUpaWC02NzIxmgQSCbJCzQ0K-SCrEcbrUa1zFS-wogQSCdBAPSf9SG6DEd-apkk0xyGrqgQSCdBAPSf9SG6DEd-apkk0xyGruATQBdAEDvIEAklOgAUBigUAkAUBuAUAwAXg5qHhCcgFn9ioBNIFBggEEAIYAugFBZoGFAoSCbJCzQ0K-SCrEcbrUa1zFS-woAYAtQZmwxk4ugY8CgJJThICQVAYqd0VIgp2aWpheWF3YWRhKgY1MjAwMDE6GmV4Y2VsbCUyMG1lZGlhJTIwcHZ0JTIwbHRkyQa-CBIdiBE2BNAGONgGOOIGP19mcC5ldmVudC5DQyBQYWlkIENvbnZlcnNpb24sX2ZwLmV2ZW50LkNDIFRyaWFsIENvbnZlcnNpb24sX29yX-oGEWh0dHBzOi8vYWRvYmUuY29t8QYAKBIdiBE2BA&redirecturl3=&ft_custom=eepWRQyQLEUVmys1eoVbR3zsQjgOmCssC-4tQgqdX0cAml8xepXRNF8=&site_url=geeksforgeeks.org&cachebuster=901172.8096731364";
+var ftKeyword_8223183="";
+var ftCustom_8223183="eepWRQyQLEUVmys1eoVbR3zsQjgOmCssC-4tQgqdX0cAml8xepXRNF8=";
+var ftSection_8223183="";
+var ftSegment_8223183="amp0";
+var ftSegmentList_8223183=[{s:'amp0'}];
+var ftRuleMatch_8223183="0";
+var ftTimestamp_8223183="1718087298";
+var ftGeoC2_8223183="in";
+var ftGeoState_8223183="ap";
+var ftGeoCity_8223183="tadepalle";
+var ftISP_8223183="excell media pvt ltd";
+var ftSpeed_8223183="broadband";
+var ftConnType_8223183="wifi";
+var ftDMA_8223183="356009";
+var ftLong_8223183="80.6";
+var ftLat_8223183="16.48";
+var ftPostal_8223183="522501";
+var ftTimeZone_8223183="+530";
+var ftMobileCarrier_8223183="";
+var ftImp8223183 = {};
+ftImp8223183.privacy = "x";
+ftImp8223183.guidAge = "4";
+ftImp8223183.impID = "2CEF9B39-C1E6-EAC0-CCB9-40D38B7FF3D0";
+ftImp8223183.duid = "FT:6002A640073CA4";
+
+ftImp8223183.ft_tpplid = "";
+ftImp8223183.ft_c = {};
+ftImp8223183.gdpr = "0";
+ftImp8223183.gdpr_consent = "";
+ftImp8223183.gdpr_pd = "";
+ftImp8223183.oob_consent = "";
+ftImp8223183.gdprStoredConsent = "";
+ftImp8223183.us_privacy = "";
+ftImp8223183.gpc = "";
+
+ftImp8223183.jsAppend = "1";
+var ftCreativeId_8223183 = "4736547";
+(function(){var tag=document.getElementById("ft_servedby_8223183")||function(s){return s[s.length-1]}(document.getElementsByTagName("script")),js=document.createElement("script");js.src="https://ajs-assets.ftstatic.com/ftUtils.js";js.id="ftscript_m8223183";js.setAttribute("name","ftscript_m8223183");tag.parentNode.insertBefore(js,tag)})();window.fTChecker=window.fTChecker||function(id){if(!id)return false;id=""+id;if(window.hasOwnProperty("ftUtils")){window["ft"+id]=Object.assign({},window.ftUtils.common);window["ft"+id].getBannerConfig(id)}else(function(id){window.setTimeout(function(){window.fTChecker(id)},50)})(id)};window.fTChecker("8223183");
+

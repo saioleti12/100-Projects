@@ -1,0 +1,116 @@
+body {
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: sans-serif;
+}
+.cart {
+  height: 600px;
+  width: 500px;
+  border: 2px solid black;
+  margin-left: 20px;
+  margin-top: 30px;
+}
+.header {
+  height: 300px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.header img {
+  height: 300px;
+  width: 100%;
+}
+.name {
+  margin-left: 40px;
+  font-size: 20px;
+}
+.content {
+  text-align: start;
+  margin-left: 40px;
+  margin-right: 40px;
+}
+/* .items {
+  margin-left: 40px;
+  height: 140px;
+  width: 100%;
+  position: relative;
+}
+.html {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background-color: blue;
+  width: 100px;
+  display: inline;
+  margin: 8px;
+  padding: 8px;
+  border-radius: 5px;
+}
+.js {
+  position: absolute;
+  top: 5px;
+  left: 130px;
+  background-color: yellow;
+  width: 100px;
+  display: inline;
+  margin: 8px;
+  padding: 8px;
+  border-radius: 5px;
+}
+.wd {
+  position: absolute;
+  top: 5px;
+  left: 250px;
+  background-color: olive;
+  width: 120px;
+  display: inline;
+  margin: 8px;
+  padding: 8px;
+  border-radius: 5px;
+}
+.git {
+  position: absolute;
+  top: 60px;
+  left: -2px;
+  background-color: aqua;
+  width: 150px;
+  display: inline;
+  margin: 8px;
+  padding: 8px;
+  border-radius: 5px;
+  margin-left: 20px;
+}
+.react {
+  position: absolute;
+  top: 60px;
+  left: 190px;
+  background-color: brown;
+  width: 100px;
+  display: inline;
+  margin: 8px;
+  padding: 8px;
+  border-radius: 5px;
+}
+.sv {
+  position: absolute;
+  top: 60px;
+  left: 310px;
+  background-color: chartreuse;
+  width: 100px;
+  display: inline;
+  margin: 8px;
+  padding: 8px;
+  border-radius: 5px;
+} */
+.skill {
+  margin: 10px;
+  width: 90px;
+  padding: 10px;
+  display: inline-block;
+  border-radius: 5px;
+  margin-left: 40px;
+}

@@ -1,0 +1,1097 @@
+(function () {
+    const environment = document.currentScript ? document.currentScript.getAttribute("environment") : null;
+    const domain = document.currentScript ? document.currentScript.getAttribute("domain") : null;
+    let ideServer = "https://codejudge.geeksforgeeks.org/";
+    let assetURL = "https://assets.geeksforgeeks.org/codetabs";
+    const ide_supported_languages = ["c", "cpp", "cpp14", "csharp", "java", "javascript", "html", "css",
+        "node", "perl", "php", "python", "python3", "py", "py3", "scala"]
+
+    if (environment === "development") {
+        ideServer = "https://codejudgetest.geeksforgeeks.org/";
+        assetURL = "https://assets.geeksforgeeks.org/codetabs-dev";
+    }
+    else if (environment === "local") {
+        ideServer = "https://codejudgetest.geeksforgeeks.org/";
+        assetURL = "/static-tabs";
+    }
+
+    // To avoid invoking the parser with `.innerHTML` for every new instance, a
+    // template for the contents of the shadow DOM is shared by all
+    // `<gfg-tabs>` instances.
+    const template = document.createElement('template');
+    let _codeMirrorEditor = false;
+    let controller;
+
+    const lightModeIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="gfg-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2.0" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg> `
+    const darkModeIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="gfg-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z" />
+        <path d="M6.343 17.657l-1.414 1.414" /><path d="M6.343 6.343l-1.414 -1.414" /><path d="M17.657 6.343l1.414 -1.414" /><path d="M17.657 17.657l1.414 1.414" /><path d="M4 12h-2" /><path d="M12 4v-2" /><path d="M20 12h2" /><path d="M12 20v2" />
+    </svg>`
+
+    const editIcon = `
+        <div class="border" id="edit-code-loader" class="gfg-icon" hidden></div>
+        <svg xmlns="http://www.w3.org/2000/svg" id="edit-close-icon" class="gfg-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2.0" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+            <path d="M13.5 6.5l4 4" />
+        </svg>`
+
+    const closeIcon = `<svg xmlns="http://www.w3.org/2000/svg"  id="edit-close-icon" class="gfg-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2.0" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M18 6l-12 12" />
+        <path d="M6 6l12 12" />
+    </svg>`
+
+    template.innerHTML = `
+    <style>
+      :host {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      ::slotted(gfg-panel) {
+        flex-basis: 100%;
+      }
+      .codeblock-container[data-content]::after,
+      .codeblock-container[data-danger-content]::after {
+        content: attr(data-content);
+        display: block;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        padding: 4px 12px;
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        font-family: inherit;
+        background-color: rgb(217, 217, 217);
+        color: #424242 !important;
+      }
+      .codeblock-container[data-danger-content]::after {
+        color: rgb(132, 5, 5) !important;
+        content: attr(data-danger-content);
+      }
+      .codeblock-container{
+        position: relative;
+        width: 100%;
+        font-family: sans-serif;
+      }
+      .code-container{
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #ddd;
+        clear: left;
+        // overflow-y: auto;
+        overflow-x: hidden;
+        // max-height: 70vh; 
+      }
+      .code-container::-webkit-scrollbar {
+        background: transparent;
+        width: 8px;
+      }
+      
+      .code-container::-webkit-scrollbar-track {
+        border-radius: 10px;
+        background-color: #e0e0e0;
+        width: 8px;
+      }
+
+      .code-container::-webkit-scrollbar-thumb {
+        border-radius: 10px;
+        background-color: #999;
+        width: 8px; 
+      }
+      .editor-buttons-div,
+      .w-56 {
+        min-width: 56px;
+      }
+      .gfg-code{
+        padding: 0;
+        width: calc(100% - 64px);
+        margin-bottom: 15px;
+      }
+      .editor-buttons{
+        display:flex;
+        flex-direction: column;
+        position: sticky;
+        position: -webkit-sticky;
+        top: 48px;
+        margin-top: 20px;
+        align-items: center;
+      }
+      .editor-buttons.output-box {
+        margin-top: 0px;
+      }
+      .editor-buttons.output-box button {
+        margin-bottom: 0 !important;
+      }
+      .code-button{
+        background: white;
+        margin-bottom: 10px;
+        border: 2px;
+        background: #e5e5e5;
+        border-radius: 50px;
+        width: 34px !important;
+        height: 34px !important;
+        cursor: pointer;
+      }
+      .code-output{
+        background: #efefef;
+        border-radius: 8px;
+        width: 100%;
+        margin-right: 2px;
+        margin-bottom: 5px
+      }
+      .close-output-button{
+        margin-bottom: 10px;
+      }
+      .code-output-content{
+        padding: 8px 16px;
+        margin: 0;
+        position: sticky;
+        position: -webkit-sticky;
+        margin-top: 10px;
+      }
+      .code-box {
+        display: flex;
+      }
+      .code-output-box {
+        display: flex;
+        align-items: center;
+      }
+      .generated-output{
+        width: 100%;
+        margin-top: 3px;
+        font-size: 15px;
+        white-space: pre-wrap;
+      }
+      .row-output{
+        color: black;
+        margin-left: 10px;
+        margin-bottom: 8px;
+        width:98%;
+        font-size: 16px;
+        padding-top: 7px;
+        padding-left: 10px
+      }
+      .border {
+        width: 34px !important;
+        height: 34px !important;
+        position: absolute;
+        background: transparent;
+        border-radius: 50%;
+        border: 2px dashed #000;
+        margin-left: -8px;
+        margin-top: -9px;
+        animation-name: rotate;
+        animation-duration: 5s;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+      }
+      .codeblock-container[data-mode=dark] .border {
+        border-color: white !important;
+      }
+      #icon-tabler-copy{
+        margin-bottom: -4px;
+        cursor: pointer;
+      }
+      .gfg-icon{
+        margin-left: auto;
+        margin-right: auto;
+        display: block !important;
+      }
+      
+      @keyframes rotate {
+        from{ transform: rotate(-360deg); }
+        to{ transform: rotate(360deg); }
+      }
+    #code-output-element #jsFrame {
+        background-color: transparent;
+        border: unset;
+        width: 100%;
+    }
+    </style>
+
+    <div class="codeblock-container">
+        <slot name="tab"></slot>
+        <div class="code-container">
+            <div class="code-box">
+                <div id="editor-buttons-div" class="editor-buttons-div" >
+                    <div id="editor-buttons" class="editor-buttons">
+                        <button class="code-button" id="copy-code-button" title="Copy Code">
+                            <svg xmlns="http://www.w3.org/2000/svg"  class="gfg-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2.0" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+                            <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2" />
+                            </svg>
+                        </button>
+                        <button class="code-button" id="edit-close-button" title="Edit Code">
+                            ${editIcon}
+                        </button>
+                        <button class="code-button" id="run-code-button" title="Run Code and See Output">
+                            <div class="border" id="run-code-loader" class="gfg-icon" hidden></div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="gfg-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2.0" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path d="M7 4v16l13 -8z" />
+                            </svg>
+                        </button>
+                        <button class="code-button" id="mode-button"  title="Light mode">
+                            ${lightModeIcon}
+                        </button>
+                    </div>
+                </div>
+                <div id="slot-panel" class="gfg-code">
+                    <slot name="panel"></slot>
+                </div>
+            </div>
+            <div class="code-output-box" id="code-output-box" >
+                <div class="editor-buttons w-56 output-box" title="Close Output">
+                    <button class="code-button" id="close-output-button" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="gfg-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M9 12h-3.586a1 1 0 0 1 -.707 -1.707l6.586 -6.586a1 1 0 0 1 1.414 0l6.586 6.586a1 1 0 0 1 -.707 1.707h-3.586v6h-6v-6z" />
+                            <path d="M9 21h6" />
+                        </svg>
+                    </button>
+                </div> 
+                <div class="code-output" id="code-output" hidden>
+                    <div class="row-output">
+                        <pre class="generated-output" id="code-output-element"></pre>
+                    </div> 
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    // HIDE
+    // ShadyCSS will rename classes as needed to ensure style scoping.
+    //
+    // ShadyCSS.prepareTemplate(template, 'gfg-tabs');
+    // /HIDE
+
+    /**
+     * `GfgTabs` is a container element for tabs and panels.
+     *
+     * All children of `<gfg-tabs>` should be either `<gfg-tab>` or
+     * `<gfg-tabpanel>`. This element is stateless, meaning that no values are
+     * cached and therefore, changes during runtime work.
+     */
+    class GfgTabs extends HTMLElement {
+        constructor() {
+            super();
+
+            this._defaultLanguage = this._getDefaultLanguage();
+
+            // Event handlers that are not attached to this element need to be bound
+            // if they need access to `this`.
+            this._onSlotChange = this._onSlotChange.bind(this);
+            this._copyCode = this._copyCode.bind(this);
+            this._runCode = this._runCode.bind(this);
+            this._editClose = this._editClose.bind(this);
+            this._closeOutput = this._closeOutput.bind(this);
+            this._closeButton = this._closeButton.bind(this);
+            this._changeMode = this._changeMode.bind(this);
+            this._setInitialtheme = this._setInitialtheme.bind(this)
+            this._runStaticCode = this._runStaticCode.bind(this)
+
+            // this._getSelectedPanel = this._getSelectedPanel.bind(this);
+            this.currentSelectedTab = false
+            //    this._observeMutationChanges = this._observeMutationChanges.bind(this);
+
+            // For progressive enhancement, the markup should alternate between tabs
+            // and panels. Elements that reorder their children tend to not work well
+            // with frameworks. Instead shadow DOM is used to reorder the elements by
+            // using slots.
+            this.attachShadow({ mode: 'open' });
+            // Import the shared template to create the slots for tabs and panels.
+            this.shadowRoot.appendChild(template.content.cloneNode(true));
+            this._tabSlot = this.shadowRoot.querySelector('slot[name=tab]');
+            this._panelSlot = this.shadowRoot.querySelector('slot[name=panel]');
+            this._codeElement = this.shadowRoot.querySelector('div[id=slot-panel]')
+
+            this._copyCodeElement = this.shadowRoot.querySelector('button[id=copy-code-button]');
+            this._runCodeElement = this.shadowRoot.querySelector('button[id=run-code-button]');
+            this._editCloseElement = this.shadowRoot.querySelector('button[id=edit-close-button]');
+            this._closeOutputButton = this.shadowRoot.querySelector('button[id=close-output-button]');
+            this._ModeButton = this.shadowRoot.querySelector('button[id=mode-button]');
+            this._codeOutputBox = this.shadowRoot.querySelector('div[id=code-output]');
+            this._editorButtonDiv = this.shadowRoot.querySelector('div[id=editor-buttons-div]')
+
+            this._backGround = document.querySelector("#data-mode");
+            if (!this._backGround) {
+                this._backGround = document.getElementsByTagName("body")[0]
+            }
+            this._setInitialtheme()
+            const callSetInitial = () => {
+                this._setInitialtheme()
+            }
+
+            function callback(mutationList) {
+                mutationList.forEach((mutation) => {
+                    switch (mutation.type) {
+                        case "attributes":
+                            switch (mutation.attributeName) {
+                                case "data-dark-mode":
+                                    callSetInitial()
+                                    break;
+                                case "data-theme":
+                                    callSetInitial()
+                                    break;
+                            }
+                            break;
+                    }
+                });
+            }
+
+            const observer = new MutationObserver(callback);
+            observer.observe(this._backGround, {
+                attributeFilter: ["data-dark-mode", "data-theme"],
+                subtree: true,
+            });
+
+            // This element needs to react to new children as it links up tabs and
+            // panel semantically using `aria-labelledby` and `aria-controls`.
+            // New children will get slotted automatically and cause `slotchange`
+            // to fire, so not `MutationObserver` is needed.
+            this._tabSlot.addEventListener('slotchange', this._onSlotChange);
+            this._panelSlot.addEventListener('slotchange', this._onSlotChange);
+            this._copyCodeElement.addEventListener("click", this._copyCode);
+            this._runCodeElement.addEventListener("click", this._runCode);
+            this._editCloseElement.addEventListener("click", this._editClose);
+            this._closeOutputButton.addEventListener("click", this._closeOutput);
+            this._ModeButton.addEventListener("click", this._changeMode);
+        }
+
+        /**
+         * `connectedCallback()` groups tabs and panels by reordering and makes sure
+         * exactly one tab is active.
+         */
+        connectedCallback() {
+            // The element needs to do some manual input event handling to allow
+            this.addEventListener('click', this._onClick);
+
+            if (!this.hasAttribute('role'))
+                this.setAttribute('role', 'tablist');
+
+            if (this.getAttribute('code-editor')) {
+                const buttons = this.shadowRoot.querySelector('div[id=editor-buttons-div]')
+                if (buttons)
+                    buttons.hidden = true
+            }
+
+            // Up until recently, `slotchange` events did not fire when an element was
+            // upgraded by the parser. For this reason, the element invokes the
+            // handler manually. Once the new behavior lands in all browsers, the code
+            // below can be removed.
+            Promise.all([
+                customElements.whenDefined('gfg-tab'),
+                customElements.whenDefined('gfg-panel'),
+            ])
+                .then(_ => this._linkPanels());
+        }
+
+        /**
+         * `disconnectedCallback()` removes the event listeners that
+         * `connectedCallback` added.
+         */
+        disconnectedCallback() {
+            this.removeEventListener('keydown', this._onKeyDown);
+            this.removeEventListener('click', this._onClick);
+            this.removeEventListener('click', this._copyCode);
+            this.removeEventListener('click', this._runCode);
+            this.removeEventListener('click', this._editClose);
+            this.removeEventListener("click", this._closeButton);
+            this.removeEventListener("click", this._closeOutput);
+            this.removeEventListener("click", this._changeMode);
+        }
+
+        /**
+         * `_onSlotChange()` is called whenever an element is added or removed from
+         * one of the shadow DOM slots.
+         */
+        _onSlotChange(event) {
+            this._linkPanels();
+        }
+
+        /**
+         * `_linkPanels()` links up tabs with their adjacent panels using
+         * `aria-controls` and `aria-labelledby`. Additionally, the method makes
+         * sure only one tab is active.
+         *
+         * If this function becomes a bottleneck, it can be easily optimized by
+         * only handling the new elements instead of iterating over all of the
+         * elementâ€™s children.
+         */
+        _linkPanels() {
+            const tabs = this._allTabs();
+            // Give each panel a `aria-labelledby` attribute that refers to the tab
+            // that controls it.
+            tabs.forEach(tab => {
+                const panel = tab.nextElementSibling;
+                if (panel && panel.tagName && panel.tagName.toLowerCase() !== 'gfg-panel') {
+                    console.error(`Tab #${tab.id} is not a` +
+                        `sibling of a <gfg-panel>`);
+                    return;
+                }
+                if (panel && tab) {
+                    tab.setAttribute('aria-controls', panel.id);
+                    panel.setAttribute('aria-labelledby', tab.id);
+                    if (panel.getAttribute("data-code-lang") == this._defaultLanguage) {
+                        tab.setAttribute("selected", true)
+                    }
+                }
+            });
+
+            // The element checks if any of the tabs have been marked as selected.
+            // If not, the first tab is now selected.
+            const selectedTab =
+                tabs.find(tab => tab.selected) || tabs[0];
+
+            // Next, switch to the selected tab. `selectTab()` takes care of
+            // marking all other tabs as deselected and hiding all other panels.
+            this._selectTab(selectedTab);
+        }
+
+        /**
+         * `_allPanels()` returns all the panels in the tab panel. This function
+         * could memoize the result if the DOM queries ever become a performance
+         * issue. The downside of memoization is that dynamically added tabs and
+         * panels will not be handled.
+         *
+         * This is a method and not a getter, because a getter implies that it is
+         * cheap to read.
+         */
+        _allPanels() {
+            return Array.from(this.querySelectorAll('gfg-panel'));
+        }
+
+        _getSelectedPanel() {
+            return this._allPanels().find(x => x.hidden === false)
+        }
+
+        /**
+         * `_allTabs()` returns all the tabs in the tab panel.
+         */
+        _allTabs() {
+            return Array.from(this.querySelectorAll('gfg-tab'));
+        }
+
+        /**
+         * `_panelForTab()` returns the panel that the given tab controls.
+         */
+        _panelForTab(tab) {
+            const panelId = tab.getAttribute('aria-controls');
+            if (panelId !== '')
+                return this.querySelector(`#${panelId}`);
+
+        }
+
+        /**
+         * reset state of tabs when codemirror closed
+        */
+        reset() {
+            const tabs = this._allTabs();
+            const panels = this._allPanels();
+            tabs.forEach(tab => tab.selected = false);
+            panels.forEach(panel => panel.hidden = true);
+        }
+
+        /**
+         * `_selectTab()` marks the given tab as selected.
+         * Additionally, it unhides the panel corresponding to the given tab.
+         */
+        _selectTab(newTab) {
+            // Deselect all tabs and hide all panels.
+            this.reset();
+
+            if (!newTab) return;
+
+            // Get the panel that the `newTab` is associated with.
+            const newPanel = newTab.nextElementSibling;
+            //  const newPanel = this._panelForTab(newTab);
+            // If that panel doesnâ€™t exist, abort.
+            if (!newPanel)
+                throw new Error(`No panel with id`);
+            newTab.selected = true;
+            newPanel.hidden = false;
+            const run_on_ide = this.getAttribute("data-run-ide")
+            let codeLanguage = this._getSelectedPanel().getAttribute("data-code-lang")
+            if (run_on_ide !== 'true' || !ide_supported_languages.includes(codeLanguage)) {
+                this._runCodeElement.hidden = this._editCloseElement.hidden = true
+            }
+            else {
+                this._runCodeElement.hidden = this._editCloseElement.hidden = false
+            }
+            return newPanel
+            // newTab.focus();
+        }
+
+        /**
+         * `_onClick()` handles clicks inside the tab panel.
+         */
+        _onClick(event) {
+            // If the click was not targeted on a tab element itself,
+            // it was a click inside the a panel or on empty space. Nothing to do.
+            if (event.target.getAttribute('role') !== 'tab')
+                return;
+
+            this._setTabMessage("", false, true);
+
+            // If it was on a tab element, though, select that tab.
+            this._closeButton(event)
+            const selectedPanel = this._selectTab(event.target);
+            this._closeOutput(event)
+            controller ? controller.abort() : "";
+
+            try {
+                if (selectedPanel) {
+                    const lang = selectedPanel.getAttribute("data-code-lang");
+                    this._setDefaultLanguageCookie(lang);
+                }
+            }
+            catch { }
+        }
+
+        /**
+         * Code copy inside current pre tag 
+        */
+        _copyCode(event) {
+            let code = "";
+            try {
+                if (_codeMirrorEditor) {
+                    code = _codeMirrorEditor.getValue()
+                }
+                else {
+                    code = this._getSelectedPanel().querySelector("pre").innerText
+                }
+
+                navigator.clipboard.writeText(code);
+                this._setTabMessage("Code Copied!")
+            } catch (error) {
+                this._setTabMessage("Error copying code", true)
+                console.log(error)
+            }
+        }
+
+        /*
+        * Open login modal on GFG if user is not login and return false 
+        * else return true.
+        */
+        _openLoginModal() {
+            let loginButton = document.querySelector(".header-main__container .login-modal-btn");
+            if (loginButton && domain === "gfg") {
+                loginButton.click()
+                return false
+            }
+            return true
+        }
+
+        /**
+         * 
+         * @param {Boolean} save 
+         * @returns 
+         * Execute code and show the output, if save is true then generate URL
+         */
+
+        _runStaticCode(code) {
+            try {
+                const codeOutputElement = this._codeOutputBox.querySelector('#code-output-element');
+                require.config({
+                    packages: [{
+                        name: "StaticCodeCompiler",
+                        location: `${assetURL}`,
+                        main: `${assetURL}/StaticCodeCompiler.min.js`
+                    }],
+                    waitSeconds: 20
+                });
+
+
+                require([
+                    `${assetURL}/StaticCodeCompiler.js`,
+                ], function () {
+                    window.StaticCodeCompiler(code, true, codeOutputElement);
+                })
+            } catch (error) {
+                console.log(error);
+                codeOutputElement.innerHTML = 'Some Error Occured';
+            }
+        }
+
+        async _runCode() {
+            const canRunCode = this._openLoginModal()
+            if (!canRunCode) {
+                return;
+            }
+
+            this._setTabMessage("", false, true);
+            controller = new AbortController();
+            if (this.loader && !this.loader.hidden) {
+                return
+            }
+            try {
+                this._codeOutputBox.hidden = false
+                this._closeOutputButton.hidden = false
+                this._codeOutputBox.scrollIntoView({ behavior: "smooth", block: "center" });
+            } catch (error) {
+                console.log(error)
+                return;
+            };
+
+            const codeOutputElement = this._codeOutputBox.querySelector('#code-output-element')
+            const errorMessage = "Some Error Occured, Please Try Again"
+            this.loader = this._runCodeElement.querySelector("#run-code-loader")
+            this.loader.hidden = false
+            this._runCodeElement.disabled = true
+            codeOutputElement.innerHTML = "Compiling..."
+
+            let codeLanguage = this._getSelectedPanel().getAttribute("data-code-lang")
+            let code = (_codeMirrorEditor) ? _codeMirrorEditor.getValue() : this._getSelectedPanel().querySelector("pre").innerText
+
+            if (["html", "css"].includes(codeLanguage)) {
+                this._runStaticCode(code)
+                this.loader.hidden = true
+                this._runCodeElement.disabled = false
+                return;
+            }
+
+            let queueResponse
+            let response;
+
+            if (["javascript", "jscript", "node"].includes(codeLanguage)) {
+                codeLanguage = "js"
+            }
+
+            try {
+                queueResponse = await fetch(`${ideServer}submit-request`, {
+                    signal: controller.signal,
+                    method: "POST",
+                    withCredentials: false,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "language": codeLanguage,
+                        "code": code,
+                        "input": "",
+                        "save": false
+                    })
+                })
+                queueResponse = await queueResponse.json()
+
+                if (queueResponse.status === 'ERROR' || !queueResponse.submission_id) {
+                    codeOutputElement.innerHTML = errorMessage
+                    this.loader.hidden = true
+                    this._runCodeElement.disabled = false
+                    return;
+                }
+            } catch (error) {
+                codeOutputElement.innerHTML = errorMessage
+                this.loader.hidden = true
+                this._runCodeElement.disabled = false
+                return;
+            }
+
+            while (1) {
+                try {
+                    response = await fetch(`${ideServer}get-status/${queueResponse.submission_id}`,
+                        {
+                            signal: controller.signal,
+                            method: "GET",
+                            withCredentials: false,
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                        });
+
+                    response = await response.json();
+                } catch (error) {
+                    console.log(error)
+                    this.loader.hidden = true
+                    this._runCodeElement.disabled = false
+                    codeOutputElement.innerHTML = errorMessage
+                    return
+                }
+
+                if (!["IN-QUEUE", "in-queue"].includes(response.status)) {
+                    break
+                }
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+
+            if (response) {
+                let output
+                if (response.output) {
+                    output = response.output
+                }
+                else {
+                    output = response.rntError || response.cmpError
+                }
+                codeOutputElement.innerHTML = output || "No Output"
+            }
+            else {
+                codeOutputElement.innerHTML = errorMessage
+            }
+            this.loader.hidden = true
+            this._runCodeElement.disabled = false
+        }
+
+        /**
+         * 
+         * @param {*} event 
+         * Toggle code mirror and add related buttons in the UI
+         */
+        async _editClose(event) {
+            const canEdit = this._openLoginModal()
+            if (!canEdit) {
+                return;
+            }
+            this._setTabMessage("", false, true);
+
+            if (this._editCloseElement.getAttribute("buttonType") === 'edit') {
+                this._closeButton(event)
+            }
+            else {
+                console.log("Her.e.e.e...")
+                const shadowRootContext = this
+                const editCloseWrap = this._editCloseElement;
+                const editLoader = editCloseWrap.querySelector('#edit-code-loader')
+                if (editLoader)
+                    editLoader.hidden = false
+
+                try {
+                    const container = this._getSelectedPanel();
+                    const code = container.querySelector("pre").innerText
+                    const theme = this._ModeButton.getAttribute("mode") === "dark" ? "monokai" : "default"
+                    const codeLanguage = container.getAttribute("data-code-lang").toLowerCase()
+
+                    require.config({
+                        packages: [{
+                            name: "codemirror",
+                            location: `${assetURL}/codemirror`,
+                            main: `lib/codemirror`
+                        }],
+                        waitSeconds: 20
+                    });
+
+                    var modeOptions = getModeCodeMirror(codeLanguage);
+                    console.log("Here.....", modeOptions)
+                    require([
+                        `codemirror`,
+                        `codemirror/mode/${modeOptions.mode}/${modeOptions.mode}`,
+                        `codemirror/addon/mode/loadmode`,
+                        `codemirror/addon/selection/active-line`
+                    ], function (CodeMirror) {
+                        // convert edit to close
+                        editCloseWrap.setAttribute("buttonType", "edit")
+                        editCloseWrap.setAttribute("title", "Close Editor")
+
+                        // hide pre tag
+                        container.querySelector("pre").hidden = true
+                        editCloseWrap.innerHTML = closeIcon
+
+                        _codeMirrorEditor = CodeMirror(container, {
+                            extraKeys: { "Ctrl-Space": "autocomplete" },
+                            mode: modeOptions.mime,
+                            value: code,
+                            theme: theme,
+                            autofocus: true,
+                            lineNumbers: true,
+                            styleActiveLine: true,
+                        })
+                        _codeMirrorEditor.focus();
+                        _codeMirrorEditor.refresh();
+                    })
+                } catch (error) {
+                    console.log(error)
+                }
+            }
+        }
+
+        /**
+         * 
+         * @param {*} event 
+         * Handle close button events
+         */
+        _closeButton(event) {
+            this._editCloseElement.setAttribute("buttonType", "close")
+            this._editCloseElement.setAttribute("title", "Edit Code")
+            this._editCloseElement.innerHTML = editIcon
+            const container = this._getSelectedPanel()
+            container.querySelector("pre").hidden = false
+            _codeMirrorEditor = false;
+            const codeMirror = container.querySelector(".CodeMirror")
+            if (codeMirror) {
+                codeMirror.parentNode.removeChild(codeMirror)
+            }
+        }
+
+        _closeOutput(event) {
+            this._codeOutputBox.hidden = true
+            this._closeOutputButton.hidden = true
+            this._codeOutputBox.querySelector('#code-output-element').innerHTML = "Compiling...."
+        }
+
+        _setInitialtheme(event) {
+            if (this._backGround) {
+                let container = this.shadowRoot.querySelector(".codeblock-container");
+                let backgroundMode = this._backGround.getAttribute("data-theme")
+
+                if (!backgroundMode) {
+                    backgroundMode = this._backGround.getAttribute("data-dark-mode")
+                }
+                let modeValue = ["dark", "true"].indexOf(backgroundMode) < 0 ? "dark" : "light";
+                this._ModeButton.setAttribute("mode", modeValue);
+                this.setAttribute("data-mode", modeValue == "dark" ? "light" : "dark");
+                container.setAttribute("data-mode", modeValue == "dark" ? "light" : "dark");
+                this._changeMode()
+            }
+        }
+
+        _changeMode(event) {
+            this._setTabMessage("", false, true);
+            const mode = this._ModeButton.getAttribute("mode");
+
+            let config = {
+                mode: "dark",
+                title: "Light Mode",
+                icon: darkModeIcon,
+                theme: "monokai"
+            }
+            if (["dark"].indexOf(mode) > -1) {
+                config = {
+                    mode: "light",
+                    title: "Dark Mode",
+                    icon: lightModeIcon,
+                    theme: "default"
+                }
+            }
+
+            this._ModeButton.setAttribute("mode", config.mode)
+            this._ModeButton.setAttribute("title", config.title)
+            this._ModeButton.innerHTML = config.icon
+
+            this._allPanels().forEach((panel) => {
+                if (panel.querySelector("div.highlight")) {
+                    if (config.mode === "dark") {
+                        panel.querySelector("div.highlight").classList.add("monokai");
+                    }
+                    else {
+                        panel.querySelector("div.highlight").classList.remove("monokai");
+                    }
+                }
+            });
+
+            // codemirror theme
+            if (_codeMirrorEditor) {
+                const codeMirror = document.getElementsByClassName('CodeMirror');
+                if (codeMirror && codeMirror[0]) {
+                    if (config.theme === "default") {
+                        codeMirror[0].style.backgroundColor = "white";
+                    }
+                    else {
+                        codeMirror[0].style.backgroundColor = ""
+                    }
+                }
+                _codeMirrorEditor.setOption("theme", config.theme)
+            }
+
+        }
+
+        _getDefaultLanguage() {
+            //Fetching the cookie
+            let default_lang = "";
+            let cookies = document.cookie;
+            let cooks = cookies.split(";");
+
+            for (let i = 0; i < cooks.length; i++) {
+                let icook = cooks[i].split("=");
+                if (icook[0].trim() == "default_lang") {
+                    default_lang = icook[1].trim();
+                }
+            }
+
+            return default_lang
+        }
+
+        // set cookie in browser for next time
+        _setDefaultLanguageCookie(langName) {
+            if (langName != this._defaultLanguage) {
+                const cookieYear = parseInt(new Date().getFullYear()) + 2
+                document.cookie = `default_lang=${langName}; expires=Sat, 01 Jan ${cookieYear} 00:00:01 GMT; domain=.geeksforgeeks.org; path=/`;
+            }
+        }
+
+        async _setTabMessage(message, error = false, remove = false) {
+            let container = this.shadowRoot.querySelector(".codeblock-container");
+
+            if (remove) {
+                container.removeAttribute("data-danger-content");
+                container.removeAttribute("data-content");
+                return;
+            }
+
+            let key = error ? "data-danger-content" : "data-content";
+            container.setAttribute(key, message || "Some error occurred");
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            this._setTabMessage("", false, true);
+
+        }
+    }
+
+    customElements.define('gfg-tabs', GfgTabs);
+
+    // `gfgTabCounter` counts the number of `<gfg-tab>` instances created. The
+    // number is used to generated new, unique IDs.
+    let gfgTabCounter = 0;
+
+    /**
+     * `GfgTab` is a tab for a `<gfg-tabs>` tab panel. `<gfg-tab>`
+     * should always be used with `role=heading` in the markup so that the
+     * semantics remain useable when JavaScript is failing.
+     *
+     * A `<gfg-tab>` declares which `<gfg-panel>` it belongs to by
+     * using that panelâ€™s ID as the value for the `aria-controls` attribute.
+     *
+     * A `<gfg-tab>` will automatically generate a unique ID if none
+     * is specified.
+     */
+    class GfgTab extends HTMLElement {
+        static get observedAttributes() {
+            return ['selected'];
+        }
+
+        connectedCallback() {
+            // If this is executed, JavaScript is working and the element
+            // changes its role to `tab`.
+            this.setAttribute('role', 'tab');
+            if (!this.id)
+                this.id = `gfg-tab-generated-${gfgTabCounter++}`;
+
+            // Set a well-defined initial state.
+            this.setAttribute('aria-selected', 'false');
+            this.setAttribute('tabindex', -1);
+            this._upgradeProperty('selected');
+        }
+
+        /**
+         * Check if a property has an instance value. If so, copy the value, and
+         * delete the instance property so it doesn't shadow the class property
+         * setter. Finally, pass the value to the class property setter so it can
+         * trigger any side effects.
+         * This is to safe guard against cases where, for instance, a framework
+         * may have added the element to the page and set a value on one of its
+         * properties, but lazy loaded its definition. Without this guard, the
+         * upgraded element would miss that property and the instance property
+         * would prevent the class property setter from ever being called.
+         */
+        _upgradeProperty(prop) {
+            if (this.hasOwnProperty(prop)) {
+                let value = this[prop];
+                delete this[prop];
+                this[prop] = value;
+            }
+        }
+
+        /**
+         * Properties and their corresponding attributes should mirror one another.
+         * To this effect, the property setter for `selected` handles truthy/falsy
+         * values and reflects those to the state of the attribute. Itâ€™s important
+         * to note that there are no side effects taking place in the property
+         * setter. For example, the setter does not set `aria-selected`. Instead,
+         * that work happens in the `attributeChangedCallback`. As a general rule,
+         * make property setters very dumb, and if setting a property or attribute
+         * should cause a side effect (like setting a corresponding ARIA attribute)
+         * do that work in the `attributeChangedCallback()`. This will avoid having
+         * to manage complex attribute/property reentrancy scenarios.
+         */
+        attributeChangedCallback() {
+            const value = this.hasAttribute('selected');
+            this.setAttribute('aria-selected', value);
+            this.setAttribute('tabindex', value ? 0 : -1);
+        }
+
+        set selected(value) {
+            value = Boolean(value);
+            if (value)
+                this.setAttribute('selected', '');
+            else
+                this.removeAttribute('selected');
+        }
+
+        get selected() {
+            return this.hasAttribute('selected');
+        }
+    }
+
+    customElements.define('gfg-tab', GfgTab);
+
+    let gfgPanelCounter = 0;
+
+    /**
+     * `GfgPanel` is a panel for a `<gfg-tabs>` tab panel.
+     */
+    class GfgPanel extends HTMLElement {
+        connectedCallback() {
+            this.setAttribute('role', 'tabpanel');
+            if (!this.id)
+                this.id = `gfg-panel-generated-${gfgPanelCounter++}`;
+        }
+    }
+
+    customElements.define('gfg-panel', GfgPanel);
+})();
+
+function getModeCodeMirror(lang) {
+    var modeInfo = [
+        { name: "C", mime: "text/x-csrc", mode: "clike", ext: ["c", "h", "ino"] },
+        { name: "Cpp", mime: "text/x-c++src", mode: "clike", ext: ["cpp", "c++", "cc", "cxx", "hpp", "h++", "hh", "hxx"], alias: ["cpp"] },
+        { name: "Cpp14", mime: "text/x-c++src", mode: "clike", ext: ["cpp", "c++", "cc", "cxx", "hpp", "h++", "hh", "hxx"], alias: ["cpp"] },
+        { name: "csharp", mime: "text/x-csharp", mode: "clike", ext: ["cs"], alias: ["csharp"] },
+        { name: "CSS", mime: "text/css", mode: "css", ext: ["css"] },
+        { name: "HTML", mime: "text/html", mode: "htmlmixed", ext: ["html", "htm", "handlebars", "hbs"], alias: ["xhtml"] },
+        { name: "xml", mime: "text/html", mode: "htmlmixed", ext: ["html", "htm", "handlebars", "hbs"], alias: ["xhtml"] },
+        { name: "Java", mime: "text/x-java", mode: "clike", ext: ["java"] },
+        {
+            name: "JavaScript", mime: "text/javascript",
+            mode: "javascript", ext: ["js"], alias: ["ecmascript", "js", "node"]
+        },
+        {
+            name: "jscript", mime: "text/javascript",
+            mode: "javascript", ext: ["js"], alias: ["ecmascript", "js", "node"]
+        },
+        { name: "JSON", mimes: ["application/json", "application/x-json"], mode: "javascript", ext: ["json", "map"], alias: ["json5"] },
+        { name: "MySQL", mime: "text/x-mysql", mode: "sql" },
+        { name: "Objc", mime: "text/x-objectivec", mode: "clike", ext: ["m", "mm"], alias: ["objective-c", "objc"] },
+        { name: "Perl", mime: "text/x-perl", mode: "perl", ext: ["pl", "pm"] },
+        { name: "PHP", mime: "text/x-php", mode: "php", ext: ["php", "php3", "php4", "php5", "php7", "phtml"] },
+        { name: "Python", mime: "text/x-python", mode: "python", ext: ["BUILD", "bzl", "py", "pyw"], file: /^(BUCK|BUILD)$/ },
+        { name: "Python3", mime: "text/x-python", mode: "python", ext: ["BUILD", "bzl", "py", "pyw"], file: /^(BUCK|BUILD)$/ },
+        { name: "R", mime: "text/x-rsrc", mode: "r", ext: ["r", "R"], alias: ["rscript"] },
+        { name: "Ruby", mime: "text/x-ruby", mode: "ruby", ext: ["rb"], alias: ["jruby", "macruby", "rake", "rb", "rbx"] },
+        { name: "Scala", mime: "text/x-scala", mode: "clike", ext: ["scala"] },
+        { name: "SQL", mime: "text/x-sql", mode: "sql", ext: ["sql"] },
+        { name: "SQLite", mime: "text/x-sqlite", mode: "sql" },
+        { name: "Swift", mime: "text/x-swift", mode: "swift", ext: ["swift"] },
+        { name: "LaTeX", mime: "text/x-latex", mode: "stex", ext: ["text", "ltx", "tex"], alias: ["tex"] },
+        { name: "VB.NET", mime: "text/x-vb", mode: "vb", ext: ["vb"] },
+        { name: "Vue.js Component", mime: "text/x-vue", mode: "vue", ext: ["vue"] },
+    ];
+
+    let defaultLang = lang;
+    if (lang === "node" || lang === "nodejs") {
+        defaultLang = "javascript";
+    }
+
+    for (var i = 0; i < modeInfo.length; i++) {
+        var info = modeInfo[i];
+        if (info.name.toLowerCase() == defaultLang) return info;
+        if (info.alias) for (var j = 0; j < info.alias.length; j++)
+            if (info.alias[j].toLowerCase() == name) return info;
+    }
+}
